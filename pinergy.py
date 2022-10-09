@@ -3,7 +3,9 @@
 # *** IMPORTS ***
 import rainbowhat as rh
 import paho.mqtt.client as mqtt
+import colorsys
 import time
+import math
 
 # *** GLOBAL CONSTANTS ***
 ECOST_TOPIC = "energy/electricity/dailycost"
@@ -12,12 +14,14 @@ EPOWER_TOPIC = "emon/emonpi/power1"
 SHOW_GAS = 1
 SHOW_ELECTRICITY = 2
 SHOW_TOTAL = 3
+RAINBOW_HUES = [0.30,0.25,0.09,0.08,0.05,0.0,0.0]
 
 # *** GLOBAL VARIABLES ***
 ecost = 0
 gcost = 0
 tcost = 0
 epower = 0
+escale = 0
 now_showing = SHOW_TOTAL
 
 # *** FUNCTION DEFINITIONS ***
@@ -45,6 +49,21 @@ def update_lights():
   elif now_showing == SHOW_GAS:
     rh.lights.rgb(0,0,1)
 
+# Update the 7 Rainbow LEDs
+def update_rainbow():
+  p = max(escale,0)
+  p = min(p,7)
+  for l in range(7):
+    if math.trunc(p) < l:
+      rh.rainbow.set_pixel(l,0,0,0,brightness=0)
+    elif p > l:
+      r, g, b = [int(c * 255) for c in colorsys.hsv_to_rgb(RAINBOW_HUES[l], 1.0, 1.0)]
+      rh.rainbow.set_pixel(l,r,g,b,brightness=0.05)
+    else:
+      r, g, b = [int(c * 255) for c in colorsys.hsv_to_rgb(RAINBOW_HUES[l], 1.0, 1.0)]
+      rh.rainbow.set_pixel(l,r,g,b,brightness=0.05*(p-math.trunc(p)))
+  rh.rainbow.show()
+      
 @rh.touch.A.press()
 def touch_a(channel):
   global now_showing
@@ -78,7 +97,7 @@ def on_connect(mqclient, userdata, flags, rc):
 
 # The callback for when a PUBLISH message is received from the server.
 def on_message(mqclient, userdata, msg):
-    global ecost, gcost, tcost, epower
+    global ecost, gcost, tcost, epower, escale
     if msg.topic == ECOST_TOPIC:
       ecost = float(msg.payload)
       tcost = gcost+ecost
@@ -89,6 +108,8 @@ def on_message(mqclient, userdata, msg):
       update_display()
     elif msg.topic == EPOWER_TOPIC:
       epower = int(msg.payload)
+      escale = math.log1p((epower-100)/50)*1.4
+      update_rainbow()
     else:
       print("Unknown topic ", msg.topic)
 
@@ -109,5 +130,6 @@ while True:
   print("Gas:", gcost)
   print("Total:", tcost)
   print("Power:", epower)
+  print("Power Scale:", escale)
   time.sleep(5)
   
