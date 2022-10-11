@@ -14,7 +14,13 @@ EPOWER_TOPIC = "emon/emonpi/power1"
 SHOW_GAS = 1
 SHOW_ELECTRICITY = 2
 SHOW_TOTAL = 3
-RAINBOW_HUES = [0.30,0.25,0.09,0.08,0.05,0.0,0.0]
+RAINBOW_COLORS = [[0,255,0],
+                  [0,255,0],
+                  [255,128,0],
+                  [255,128,0],
+                  [255,128,0],
+                  [255,0,0],
+                  [255,0,0]]
 
 # *** GLOBAL VARIABLES ***
 ecost = 0
@@ -23,6 +29,7 @@ tcost = 0
 epower = 0
 escale = 0
 now_showing = SHOW_TOTAL
+debug = False
 
 # *** FUNCTION DEFINITIONS ***
 
@@ -53,15 +60,14 @@ def update_lights():
 def update_rainbow():
   p = max(escale,0)
   p = min(p,7)
-  for l in range(7):
-    if math.trunc(p) < l:
-      rh.rainbow.set_pixel(l,0,0,0,brightness=0)
-    elif p > l:
-      r, g, b = [int(c * 255) for c in colorsys.hsv_to_rgb(RAINBOW_HUES[l], 1.0, 1.0)]
-      rh.rainbow.set_pixel(l,r,g,b,brightness=0.05)
-    else:
-      r, g, b = [int(c * 255) for c in colorsys.hsv_to_rgb(RAINBOW_HUES[l], 1.0, 1.0)]
-      rh.rainbow.set_pixel(l,r,g,b,brightness=0.05*(p-math.trunc(p)))
+  n = round(p)
+  rh.rainbow.clear()
+  for l in range(n):
+    rh.rainbow.set_pixel(l,
+                         RAINBOW_COLORS[l][0],
+                         RAINBOW_COLORS[l][1],
+                         RAINBOW_COLORS[l][2],
+                         brightness=0.05)
   rh.rainbow.show()
       
 @rh.touch.A.press()
@@ -126,10 +132,11 @@ mq.loop_start()
 
 # *** MAIN LOOP ***
 while True:
-  print("Electricity:", ecost)
-  print("Gas:", gcost)
-  print("Total:", tcost)
-  print("Power:", epower)
-  print("Power Scale:", escale)
+  if debug == True:
+    print("Electricity:", ecost)
+    print("Gas:", gcost)
+    print("Total:", tcost)
+    print("Power:", epower)
+    print("Power Scale:", escale)
   time.sleep(5)
   
